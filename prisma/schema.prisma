@@ -1,0 +1,229 @@
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-1.1.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Store {
+  id                String               @id @default(cuid())
+  code              String               @unique
+  name              String
+  timezone          String               @default("Asia/Shanghai")
+  currency          String               @default("CNY")
+  locale            String               @default("zh-CN")
+  address           String?
+  managerName       String?
+  contactPhone      String?
+  openedAt          DateTime?
+  isActive          Boolean              @default(true)
+  metadata          Json?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  inventoryItems    InventoryItem[]
+  predictionReports PredictionSnapshot[]
+  marketingCampaigns MarketingCampaign[]
+  staffSchedules    StaffSchedule[]
+  alertRecords      AlertRecord[]
+  costSnapshots     CostSnapshot[]
+  decisionSnapshots DecisionSnapshot[]
+
+  @@map("stores")
+}
+
+model InventoryItem {
+  id             String   @id @default(cuid())
+  storeId        String
+  sku            String
+  name           String
+  nameEn         String?
+  category       String?
+  unit           String   @default("unit")
+  currentStock   Decimal  @default(0) @db.Decimal(10, 2)
+  reorderPoint   Decimal  @default(0) @db.Decimal(10, 2)
+  safetyStock    Decimal  @default(0) @db.Decimal(10, 2)
+  leadTimeDays   Int      @default(2)
+  supplier       String?
+  shelfLifeDays  Int?
+  lastDeliveryAt DateTime?
+  metadata       Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, sku])
+  @@index([storeId, name])
+  @@map("inventory_items")
+}
+
+model PredictionSnapshot {
+  id            String   @id @default(cuid())
+  storeId       String
+  targetDate    DateTime
+  horizon       String   @default("daily")
+  modelVersion  String?
+  generatedAt   DateTime @default(now())
+  generatedBy   String?
+  payload       Json
+  metrics       Json?
+  notes         String?
+  createdAt     DateTime @default(now())
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, targetDate])
+  @@map("prediction_snapshots")
+}
+
+model MarketingCampaign {
+  id             String          @id @default(cuid())
+  storeId        String
+  name           String
+  objective      String?
+  channel        String
+  status         CampaignStatus  @default(DRAFT)
+  budget         Decimal         @default(0) @db.Decimal(12, 2)
+  expectedLift   Decimal?        @db.Decimal(5, 2)
+  actualLift     Decimal?        @db.Decimal(5, 2)
+  startDate      DateTime
+  endDate        DateTime?
+  kpi            Json?
+  tags           String[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, status])
+  @@map("marketing_campaigns")
+}
+
+model StaffSchedule {
+  id           String          @id @default(cuid())
+  storeId      String
+  scheduleDate DateTime
+  staffName    String
+  role         String
+  shiftCode    String
+  shiftStart   DateTime
+  shiftEnd     DateTime
+  status       ScheduleStatus  @default(DRAFT)
+  coverageNote String?
+  assignments  Json?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, scheduleDate])
+  @@map("staff_schedules")
+}
+
+model AlertRecord {
+  id              String       @id @default(cuid())
+  storeId         String
+  alertType       AlertType
+  alertLevel      AlertLevel   @default(MEDIUM)
+  title           String
+  message         String
+  source          String?
+  context         Json?
+  acknowledged    Boolean      @default(false)
+  acknowledgedBy  String?
+  acknowledgedAt  DateTime?
+  requiresAction  Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+  resolvedAt      DateTime?
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, alertType, alertLevel])
+  @@map("alert_records")
+}
+
+model CostSnapshot {
+  id             String   @id @default(cuid())
+  storeId        String
+  capturedDate   DateTime
+  cogs           Decimal  @default(0) @db.Decimal(12, 2)
+  laborCost      Decimal  @default(0) @db.Decimal(12, 2)
+  marketingSpend Decimal  @default(0) @db.Decimal(12, 2)
+  utilities      Decimal  @default(0) @db.Decimal(12, 2)
+  otherCost      Decimal  @default(0) @db.Decimal(12, 2)
+  revenue        Decimal? @db.Decimal(12, 2)
+  footTraffic    Int?
+  comments       String?
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, capturedDate])
+  @@map("cost_snapshots")
+}
+
+model DecisionSnapshot {
+  id             String           @id @default(cuid())
+  storeId        String
+  decisionType   DecisionType
+  context        Json
+  recommendation Json
+  status         DecisionStatus   @default(PENDING)
+  appliedAt      DateTime?
+  appliedBy      String?
+  notes          String?
+  createdAt      DateTime         @default(now())
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, decisionType])
+  @@map("decision_snapshots")
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum ScheduleStatus {
+  DRAFT
+  PUBLISHED
+  OVERRIDDEN
+}
+
+enum AlertType {
+  INVENTORY
+  SALES
+  LABOR
+  OPERATIONS
+  MARKETING
+  SYSTEM
+}
+
+enum AlertLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum DecisionType {
+  INVENTORY_REPLENISHMENT
+  WORKFORCE_ADJUSTMENT
+  PROMOTION_PLANNING
+  MENU_OPTIMIZATION
+  COST_CONTROL
+}
+
+enum DecisionStatus {
+  PENDING
+  APPLIED
+  DISMISSED
+}
