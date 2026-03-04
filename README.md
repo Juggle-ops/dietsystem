@@ -1,5 +1,7 @@
 # Diet System 
 
+https://github.com/Juggle-ops/dietsystem/blob/img/1772625153584.svg
+
 This service powers the Stage 3 rollout of the Diet System restaurant platform. It is built with NestJS and Prisma to support forecasting, inventory, marketing, cost monitoring, and decision workflows for multi-store operations.
 
 ## Tech Stack
