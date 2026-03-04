@@ -7,7 +7,7 @@ This service powers the Stage 3 rollout of the Diet System restaurant platform. 
 ## Authors & Maintainers
 
 * **Zhai Slim**
-* **Xie Zhaoxian**
+* **Chao-Hsien Hsieh**
 
 
 ## Tech Stack
